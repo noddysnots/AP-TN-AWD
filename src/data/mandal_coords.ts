@@ -1,6 +1,7 @@
-// Mandal centroid coordinates - CORRECTED VERSION
-// All TG mandal coordinates verified against district polygon boundaries
-// AP: Real Survey of India centroids (Dec 2025 shapefile)
+// Mandal centroid coordinates - FULLY CORRECTED
+// TG: 444 mandals — geometry-verified against district boundaries
+// AP: 686 mandals — Survey of India official shapefile (Dec 2025)
+// Both TG and AP use identical names as in mandals.ts
 
 export interface MandalCoord {
   name: string;
@@ -11,7 +12,7 @@ export interface MandalCoord {
 }
 
 export const MANDAL_COORDS: MandalCoord[] = [
-  // ── TELANGANA (geometry-verified centroids) ───────────────────────────────
+  // ── TELANGANA ──────────────────────────────────────────────────────────────
   { name: 'Adilabad', district: 'Adilabad', state: 'TG', lat: 19.62626, lon: 78.59688 },
   { name: 'Bazarhathnoor', district: 'Adilabad', state: 'TG', lat: 19.49051, lon: 78.37617 },
   { name: 'Bela', district: 'Adilabad', state: 'TG', lat: 19.68805, lon: 78.76759 },
@@ -457,7 +458,7 @@ export const MANDAL_COORDS: MandalCoord[] = [
   { name: 'Valigonda', district: 'Yadadri Bhuvanagiri', state: 'TG', lat: 17.39301, lon: 79.03694 },
   { name: 'Yadagirigutta', district: 'Yadadri Bhuvanagiri', state: 'TG', lat: 17.60201, lon: 78.98478 },
 
-  // ── ANDHRA PRADESH (Survey of India official data) ────────────────────────
+  // ── ANDHRA PRADESH ───────────────────────────────────────────────────────────
   { name: 'Addateegala', district: 'Alluri Sitarama Raju', state: 'AP', lat: 17.50653, lon: 82.0605 },
   { name: 'Anantagiri', district: 'Alluri Sitarama Raju', state: 'AP', lat: 18.18483, lon: 83.03852 },
   { name: 'Araku Valley', district: 'Alluri Sitarama Raju', state: 'AP', lat: 18.31335, lon: 82.94366 },
@@ -1155,7 +1156,7 @@ export const getMandalCoords = (
   const normName = normalize(mandalName);
   const normDist = normalize(district);
 
-  // Pass 1: exact name + district match
+  // Pass 1: exact match on both name and district
   let entry = MANDAL_COORDS.find(m =>
     m.state === state &&
     normalize(m.name) === normName &&
@@ -1163,13 +1164,16 @@ export const getMandalCoords = (
   );
   if (entry) return { lat: entry.lat, lon: entry.lon };
 
-  // Pass 2: name match only within same state (handles district name variations)
+  // Pass 2: name match only (handles district name spelling variants)
   const nameMatches = MANDAL_COORDS.filter(m =>
     m.state === state && normalize(m.name) === normName
   );
   if (nameMatches.length === 1) return { lat: nameMatches[0].lat, lon: nameMatches[0].lon };
   if (nameMatches.length > 1) {
-    const partial = nameMatches.find(m => normalize(m.district).includes(normDist.slice(0,5)));
+    const partial = nameMatches.find(m =>
+      normalize(m.district).includes(normDist.slice(0, 6)) ||
+      normDist.includes(normalize(m.district).slice(0, 6))
+    );
     if (partial) return { lat: partial.lat, lon: partial.lon };
     return { lat: nameMatches[0].lat, lon: nameMatches[0].lon };
   }
