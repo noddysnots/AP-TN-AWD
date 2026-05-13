@@ -1,0 +1,81 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #f8f9fa;
+}
+
+/* Leaflet map pane fade for district/mandal switch */
+.leaflet-pane.map-layer-fade {
+  transition: opacity 0.35s ease;
+}
+
+/* Focus rings for accessibility */
+.map-ui-focus:focus-visible {
+  outline: 2px solid #00796b;
+  outline-offset: 2px;
+}
+
+.leaflet-container {
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+.measure-crosshair .leaflet-container,
+.measure-crosshair .leaflet-clickable {
+  cursor: crosshair !important;
+}
+
+.section-header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #757575;
+  text-transform: uppercase;
+}
+
+.leaflet-tooltip.district-label {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #212121;
+  text-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.9),
+    0 -1px 2px rgba(255, 255, 255, 0.9),
+    1px 0 2px rgba(255, 255, 255, 0.9),
+    -1px 0 2px rgba(255, 255, 255, 0.9);
+  pointer-events: none !important;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip.district-label::before {
+  display: none !important;
+}
+
+.leaflet-tooltip.measure-line-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #bbdefb !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #1565c0 !important;
+  padding: 2px 6px !important;
+  pointer-events: none !important;
+}
+
+.leaflet-tooltip.measure-line-tooltip::before {
+  display: none !important;
+}
