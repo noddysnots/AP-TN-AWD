@@ -54,7 +54,8 @@ function TooltipZoomSync({
 
   const apply = useCallback(() => {
     const z = map.getZoom()
-    const permanent = z >= 8
+    // Districts are big enough to label permanently from zoom 7 upward.
+    const permanent = z >= 7
     for (const path of pathsRef.current) {
       const label = (path as unknown as { __districtLabel?: string }).__districtLabel
       if (!label) continue
@@ -85,6 +86,9 @@ interface DistrictLayerProps {
   datasetState: StateCode
   stateView: StateView
   colorById: ReadonlyMap<string, string>
+  /** True when at least one district chip is selected anywhere — non-selected
+   *  district polygons render at low opacity so selections stand out. */
+  anyDistrictSelected: boolean
   hoveredId: string | null
   onHover: (id: string | null) => void
   measureEnabled: boolean
@@ -97,6 +101,7 @@ export const DistrictLayer = memo(function DistrictLayer({
   datasetState,
   stateView,
   colorById,
+  anyDistrictSelected,
   hoveredId,
   onHover,
   measureEnabled,
@@ -133,6 +138,15 @@ export const DistrictLayer = memo(function DistrictLayer({
           weight: 2.5,
         }
       }
+      // Some other district is selected — dim everything that isn't, but
+      // still give a small hover pop for discoverability.
+      if (anyDistrictSelected) {
+        return {
+          ...base,
+          fillOpacity: isHover ? 0.35 : 0.15,
+          weight: isHover ? 1.4 : 1,
+        }
+      }
       if (isHover) {
         return {
           ...base,
@@ -143,7 +157,7 @@ export const DistrictLayer = memo(function DistrictLayer({
       }
       return { ...base }
     },
-    [colorById, datasetState, hoveredId],
+    [colorById, datasetState, hoveredId, anyDistrictSelected],
   )
 
   const onEachFeature = useCallback(

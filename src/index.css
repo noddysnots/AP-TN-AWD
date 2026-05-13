@@ -48,18 +48,39 @@ body,
   box-shadow: none !important;
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 11px;
-  font-weight: 600;
-  color: #212121;
+  font-weight: 700;
+  color: #1a1a1a;
   text-shadow:
-    0 1px 2px rgba(255, 255, 255, 0.9),
-    0 -1px 2px rgba(255, 255, 255, 0.9),
-    1px 0 2px rgba(255, 255, 255, 0.9),
-    -1px 0 2px rgba(255, 255, 255, 0.9);
+    0 0 3px #fff,
+    0 0 3px #fff,
+    0 0 3px #fff;
   pointer-events: none !important;
   white-space: nowrap;
+  padding: 0 !important;
 }
 
 .leaflet-tooltip.district-label::before {
+  display: none !important;
+}
+
+.leaflet-tooltip.mandal-label {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  color: #333;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 2px #fff,
+    0 0 2px #fff;
+  pointer-events: none !important;
+  white-space: nowrap;
+  padding: 0 !important;
+}
+
+.leaflet-tooltip.mandal-label::before {
   display: none !important;
 }
 

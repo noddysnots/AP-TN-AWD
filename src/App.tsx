@@ -95,6 +95,21 @@ export default function App() {
     [items],
   )
 
+  /** state+normalizedDistrict → accent color, for districts currently selected as chips.
+   *  Drives dimming of non-selected districts AND mandal-polygon rendering inside selected districts. */
+  const selectedDistrictColorByKey = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const it of items) {
+      if (it.layer !== 'district') continue
+      const label = getDistrictLabel(it.feature.properties)
+      const norm = normalizeDistrictForMandals(resolveDistrictName(label, it.state))
+      if (norm) map.set(`${it.state}:${norm}`, it.color)
+      const rawNorm = normalizeDistrictForMandals(label)
+      if (rawNorm && rawNorm !== norm) map.set(`${it.state}:${rawNorm}`, it.color)
+    }
+    return map
+  }, [items])
+
   const mandalMerged = useMemo(
     () => mergeCollections(apMandals.data, tgMandals.data),
     [apMandals.data, tgMandals.data],
@@ -115,9 +130,12 @@ export default function App() {
     if (mandalsInOrder.length !== 2) return
     const a = mandalsInOrder[0]
     const b = mandalsInOrder[1]
-    const keyA = `${a.state}:${normalizeDistrictForMandals(String(a.feature.properties?.district ?? ''))}`
-    const keyB = `${b.state}:${normalizeDistrictForMandals(String(b.feature.properties?.district ?? ''))}`
-    if (keyA === keyB) return
+    // Block only same-state + same-district pairs. Cross-state pairs always allowed.
+    const sameDistrict =
+      a.state === b.state &&
+      normalizeDistrictForMandals(String(a.feature.properties?.district ?? '')) ===
+        normalizeDistrictForMandals(String(b.feature.properties?.district ?? ''))
+    if (sameDistrict) return
 
     const da = String(a.feature.properties?.district ?? '')
     const db = String(b.feature.properties?.district ?? '')
@@ -154,8 +172,11 @@ export default function App() {
       const mandalsInOrder = items.filter((i) => i.layer === 'mandal')
       const pairEligible =
         mandalsInOrder.length === 2 &&
-        `${mandalsInOrder[0].state}:${normalizeDistrictForMandals(String(mandalsInOrder[0].feature.properties?.district ?? ''))}` !==
-          `${mandalsInOrder[1].state}:${normalizeDistrictForMandals(String(mandalsInOrder[1].feature.properties?.district ?? ''))}`
+        !(
+          mandalsInOrder[0].state === mandalsInOrder[1].state &&
+          normalizeDistrictForMandals(String(mandalsInOrder[0].feature.properties?.district ?? '')) ===
+            normalizeDistrictForMandals(String(mandalsInOrder[1].feature.properties?.district ?? ''))
+        )
 
       if (autoDistance.ok === false) {
         if (!pairEligible) setAutoDistance(null)
@@ -505,6 +526,7 @@ export default function App() {
               tgDistricts={districts.tgData}
               mandalMerged={mandalMerged}
               colorById={colorById}
+              selectedDistrictColorByKey={selectedDistrictColorByKey}
               measureEnabled={distance.enabled}
               onToggleSelect={onToggleSelect}
               onMeasurePick={onMeasurePick}

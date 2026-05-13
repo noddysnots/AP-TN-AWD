@@ -76,6 +76,9 @@ export interface MapContainerProps {
   tgDistricts: DistrictCollection | null
   mandalMerged: DistrictCollection | null
   colorById: ReadonlyMap<string, string>
+  /** state+normalizedDistrict → accent color for currently-selected district chips.
+   *  Empty when no district is selected. Drives district dimming + mandal-polygon scoping. */
+  selectedDistrictColorByKey: ReadonlyMap<string, string>
   measureEnabled: boolean
   onToggleSelect: (f: DistrictFeature) => void
   onMeasurePick: (f: DistrictFeature) => void
@@ -101,6 +104,7 @@ export const MapContainer = memo(function MapContainer({
   tgDistricts,
   mandalMerged,
   colorById,
+  selectedDistrictColorByKey,
   measureEnabled,
   onToggleSelect,
   onMeasurePick,
@@ -117,36 +121,25 @@ export const MapContainer = memo(function MapContainer({
   /** Keep hover inside the map subtree so App does not re-render on mousemove (avoids Leaflet resize/view glitches). */
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
-  const mandalStates = useMemo(() => {
-    const set = new Set<'AP' | 'TG'>()
-    for (const f of mandalMerged?.features ?? []) {
-      const st = f.properties?._state
-      if (st === 'AP' || st === 'TG') set.add(st)
-    }
-    return set
-  }, [mandalMerged])
-
-  const hasAnyMandalGeometry = mandalStates.size > 0
+  /* Districts are always visible (dimmed when not selected, accent when selected).
+   * Mandal polygons are visible only when at least one district is selected — and
+   * each MandalLayer instance internally filters down to features whose parent
+   * district is in `selectedDistrictColorByKey`. */
+  void layerMode
   const districtVisible = true
-  const mandalVisible = layerMode === 'mandal' && hasAnyMandalGeometry
+  const mandalVisible = selectedDistrictColorByKey.size > 0 && (mandalMerged?.features.length ?? 0) > 0
 
   const apLayerData = useMemo(() => {
     if (!apDistricts) return null
     if (stateView === 'TG') return { type: 'FeatureCollection' as const, features: [] }
-    if (layerMode === 'mandal' && mandalStates.has('AP')) {
-      return { type: 'FeatureCollection' as const, features: [] }
-    }
     return apDistricts
-  }, [apDistricts, stateView, layerMode, mandalStates])
+  }, [apDistricts, stateView])
 
   const tgLayerData = useMemo(() => {
     if (!tgDistricts) return null
     if (stateView === 'AP') return { type: 'FeatureCollection' as const, features: [] }
-    if (layerMode === 'mandal' && mandalStates.has('TG')) {
-      return { type: 'FeatureCollection' as const, features: [] }
-    }
     return tgDistricts
-  }, [tgDistricts, stateView, layerMode, mandalStates])
+  }, [tgDistricts, stateView])
 
   const districtBoundsSource = useMemo(() => {
     const merged = mergeCollections(apDistricts, tgDistricts)
@@ -201,6 +194,7 @@ export const MapContainer = memo(function MapContainer({
             datasetState="AP"
             stateView={stateView}
             colorById={colorById}
+            anyDistrictSelected={selectedDistrictColorByKey.size > 0}
             hoveredId={hoveredId}
             onHover={setHoveredId}
             measureEnabled={measureEnabled}
@@ -212,6 +206,7 @@ export const MapContainer = memo(function MapContainer({
             datasetState="TG"
             stateView={stateView}
             colorById={colorById}
+            anyDistrictSelected={selectedDistrictColorByKey.size > 0}
             hoveredId={hoveredId}
             onHover={setHoveredId}
             measureEnabled={measureEnabled}
@@ -233,6 +228,7 @@ export const MapContainer = memo(function MapContainer({
           data={mandalMerged}
           stateView={stateView}
           colorById={colorById}
+          selectedDistrictColorByKey={selectedDistrictColorByKey}
           hoveredId={hoveredId}
           onHover={setHoveredId}
           measureEnabled={measureEnabled}

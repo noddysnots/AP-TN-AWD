@@ -53,10 +53,16 @@ export function Sidebar({
   const code = p?.D_C ?? p?.DT_C
 
   const selectedMandals = items.filter((i) => i.layer === 'mandal')
-  const mandalDistrictKey = (m: SelectedFeature) =>
-    `${m.state}:${normalizeDistrictForMandals(String(m.feature.properties?.district ?? ''))}`
+  // Allow distance measurement between any two selected mandals as long as
+  // they are not the same district within the same state. Cross-state pairs
+  // (TG mandal + AP mandal) are explicitly allowed, even when district names
+  // coincidentally collide.
+  const isSameDistrict = (a: SelectedFeature, b: SelectedFeature) =>
+    a.state === b.state &&
+    normalizeDistrictForMandals(String(a.feature.properties?.district ?? '')) ===
+      normalizeDistrictForMandals(String(b.feature.properties?.district ?? ''))
   const showAutoMeasureButton =
-    selectedMandals.length === 2 && mandalDistrictKey(selectedMandals[0]) !== mandalDistrictKey(selectedMandals[1])
+    selectedMandals.length === 2 && !isSameDistrict(selectedMandals[0], selectedMandals[1])
 
   const autoMeasureButtonLabel =
     showAutoMeasureButton && selectedMandals[0] && selectedMandals[1]
