@@ -2,7 +2,10 @@ import * as turf from '@turf/turf'
 import type { BBox, Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import type L from 'leaflet'
 
-import type { DistrictCollection, DistrictFeature, DistrictProperties, StateCode } from '../types'
+import type { Mandal } from '../data/mandals'
+import { normalizeDistrictForMandals, resolveDistrictName } from '../data/mandals'
+import { getMandalCoords } from '../data/mandal_coords'
+import type { DistrictCollection, DistrictFeature, DistrictProperties, SelectedFeature, StateCode } from '../types'
 
 import { getName, getPolygonMapLabel, getStateCode } from './mapLabels'
 
@@ -136,6 +139,76 @@ export function isValidFeatureCollection(data: unknown): data is FeatureCollecti
     (data as FeatureCollection).type === 'FeatureCollection' &&
     Array.isArray((data as FeatureCollection).features)
   )
+}
+
+/**
+ * Match a list mandal to bundled mandal GeoJSON when the polygon's `district` label is still
+ * pre-reorg (e.g. Nizamabad) but `mandals.ts` uses the current district (e.g. Kamareddy).
+ * If multiple same-named mandals exist in the state, requires an exact district match.
+ */
+export function resolveMandalFeatureFromList(fc: DistrictCollection | null, m: Mandal): DistrictFeature | null {
+  if (!fc) return null
+  const wantName = normalizeDistrictForMandals(m.name)
+  const wantDist = normalizeDistrictForMandals(resolveDistrictName(m.district, m.state))
+
+  const nameHits: DistrictFeature[] = []
+  for (const f of fc.features as DistrictFeature[]) {
+    const p = f.properties
+    if (!p || p._state !== m.state) continue
+    if (p._layer && p._layer !== 'mandal') continue
+    const mn = normalizeDistrictForMandals(String(p.dtname ?? p.mandal ?? ''))
+    if (mn !== wantName) continue
+    nameHits.push(f)
+  }
+  if (nameHits.length === 0) return null
+
+  const exact = nameHits.filter((f) => {
+    const gd = normalizeDistrictForMandals(resolveDistrictName(String(f.properties?.district ?? ''), m.state))
+    return gd === wantDist
+  })
+  if (exact.length >= 1) return exact[0]
+  if (nameHits.length === 1) return nameHits[0]
+  return null
+}
+
+/** List-picked mandal: stable id + UI district while keeping GeoJSON geometry. */
+export function mandalFeatureWithListIdentity(fromGeo: DistrictFeature, m: Mandal): DistrictFeature {
+  const id = `${m.state}-mandal-${m.district}-${m.name}`
+  return {
+    ...fromGeo,
+    properties: {
+      ...(fromGeo.properties ?? {}),
+      district: m.district,
+      dtname: m.name,
+      mandal: m.name,
+      _state: m.state,
+      _layer: 'mandal',
+      _fid: id,
+    },
+  } as DistrictFeature
+}
+
+/** Pin / distance point for a selected mandal: polygon centroid when available, else bundled coords. */
+export function getMandalPinLatLngFromSelection(it: SelectedFeature): { lat: number; lng: number } | null {
+  if (it.layer !== 'mandal') return null
+  const props = it.feature.properties
+  const district = String(props?.district ?? '')
+  const g = it.feature.geometry
+
+  if (props?.note === 'no_polygon_parent_district') {
+    const c = getMandalCoords(it.name, district, it.state)
+    return c ? { lat: c.lat, lng: c.lon } : null
+  }
+  if (g && (g.type === 'Polygon' || g.type === 'MultiPolygon')) {
+    try {
+      const [lat, lng] = centroidOfPolygonFeature(it.feature as Feature<Polygon | MultiPolygon>)
+      return { lat, lng }
+    } catch {
+      /* fall through */
+    }
+  }
+  const c = getMandalCoords(it.name, district, it.state)
+  return c ? { lat: c.lat, lng: c.lon } : null
 }
 
 export function findFeatureContainingPoint(

@@ -298,7 +298,7 @@ export const MANDAL_COORDS: MandalCoord[] = [
   { name: 'Balkonda', district: 'Nizamabad', state: 'TG', lat: 18.91636, lon: 78.36985 },
   { name: 'Bheemgal', district: 'Nizamabad', state: 'TG', lat: 18.68347, lon: 78.47468 },
   { name: 'Bodhan', district: 'Nizamabad', state: 'TG', lat: 18.68764, lon: 77.86129 },
-  { name: 'Dharpalle', district: 'Nizamabad', state: 'TG', lat: 18.56171, lon: 78.32503 },
+  { name: 'Dharpalle', district: 'Kamareddy', state: 'TG', lat: 18.59667, lon: 78.45167 },
   { name: 'Dichpalle', district: 'Nizamabad', state: 'TG', lat: 18.5944, lon: 78.22483 },
   { name: 'Jakranpalle', district: 'Nizamabad', state: 'TG', lat: 18.7095, lon: 78.27951 },
   { name: 'Kotgiri', district: 'Nizamabad', state: 'TG', lat: 18.57881, lon: 77.80415 },
@@ -1168,14 +1168,21 @@ export const getMandalCoords = (
   const nameMatches = MANDAL_COORDS.filter(m =>
     m.state === state && normalize(m.name) === normName
   );
-  if (nameMatches.length === 1) return { lat: nameMatches[0].lat, lon: nameMatches[0].lon };
+  if (nameMatches.length === 1) {
+    const only = nameMatches[0];
+    if (normalize(only.district) === normDist) return { lat: only.lat, lon: only.lon };
+    return null;
+  }
   if (nameMatches.length > 1) {
-    const partial = nameMatches.find(m =>
-      normalize(m.district).includes(normDist.slice(0, 6)) ||
-      normDist.includes(normalize(m.district).slice(0, 6))
+    const sameDist = nameMatches.find((m2) => normalize(m2.district) === normDist);
+    if (sameDist) return { lat: sameDist.lat, lon: sameDist.lon };
+    const partial = nameMatches.find(
+      (m2) =>
+        normalize(m2.district).includes(normDist.slice(0, 6)) ||
+        normDist.includes(normalize(m2.district).slice(0, 6)),
     );
     if (partial) return { lat: partial.lat, lon: partial.lon };
-    return { lat: nameMatches[0].lat, lon: nameMatches[0].lon };
+    return null;
   }
 
   return null;

@@ -2,7 +2,7 @@ import L from 'leaflet'
 import { memo, useMemo } from 'react'
 import { Marker, Pane, Tooltip } from 'react-leaflet'
 
-import { getMandalCoords } from '../data/mandal_coords'
+import { getMandalPinLatLngFromSelection } from '../utils/geo'
 import type { MandalMeasureRef, SelectedFeature } from '../types'
 
 export interface MandalPinLayerProps {
@@ -29,7 +29,7 @@ export const MandalPinLayer = memo(function MandalPinLayer({
     for (const it of items) {
       if (it.layer !== 'mandal') continue
       const district = String(it.feature.properties?.district ?? '')
-      const c = getMandalCoords(it.name, district, it.state)
+      const c = getMandalPinLatLngFromSelection(it)
       if (!c) continue
       const color = colorById.get(it.id) ?? '#00796b'
       const icon = L.divIcon({
@@ -47,12 +47,12 @@ export const MandalPinLayer = memo(function MandalPinLayer({
         iconAnchor: [7, 7],
       })
       if (import.meta.env.DEV) {
-        console.log('[mandal pin]', it.name, c.lat, c.lon)
+        console.log('[mandal pin]', it.name, c.lat, c.lng)
       }
       out.push({
         id: it.id,
         lat: c.lat,
-        lng: c.lon,
+        lng: c.lng,
         icon,
         meta: { name: it.name, district, state: it.state },
       })

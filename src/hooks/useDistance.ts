@@ -2,11 +2,7 @@ import { useCallback, useReducer, useState } from 'react'
 
 import { getMandalCoords } from '../data/mandal_coords'
 import type { DistrictFeature, MandalMeasureRef, MeasurePoint, SelectedFeature } from '../types'
-import {
-  centroidOfPolygonFeature,
-  distanceKm as turfDistanceKm,
-  getDistrictLabel,
-} from '../utils/geo'
+import { centroidOfPolygonFeature, getMandalPinLatLngFromSelection, distanceKm as turfDistanceKm, getDistrictLabel } from '../utils/geo'
 
 export interface UseDistanceResult {
   enabled: boolean
@@ -83,12 +79,13 @@ function pointFromMandalPick(lat: number, lng: number, m: MandalMeasureRef): Mea
 
 function pointFromSelectedItem(it: SelectedFeature): MeasurePoint | null {
   if (it.layer === 'district') return pointFromFeature(it.feature)
-  const d = String(it.feature.properties?.district ?? '')
-  const c = getMandalCoords(it.name, d, it.state)
+  if (it.layer !== 'mandal') return null
+  const c = getMandalPinLatLngFromSelection(it)
   if (!c) return null
+  const d = String(it.feature.properties?.district ?? '')
   return {
     lat: c.lat,
-    lng: c.lon,
+    lng: c.lng,
     label: it.name,
     sublabel: d,
     source: 'mandal',

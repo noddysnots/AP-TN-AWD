@@ -24,7 +24,14 @@ import type {
   LayerMode,
   StateView,
 } from './types'
-import { distanceKm as geoDistanceKm, getDistrictLabel, mergeCollections } from './utils/geo'
+import {
+  distanceKm as geoDistanceKm,
+  getDistrictLabel,
+  getMandalPinLatLngFromSelection,
+  mandalFeatureWithListIdentity,
+  mergeCollections,
+  resolveMandalFeatureFromList,
+} from './utils/geo'
 import { flyToFeatureBounds } from './utils/mapNavigation'
 
 function flyToMandalCoordsIfAny(
@@ -139,20 +146,20 @@ export default function App() {
 
     const da = String(a.feature.properties?.district ?? '')
     const db = String(b.feature.properties?.district ?? '')
-    const ca = getMandalCoords(a.name, da, a.state)
-    const cb = getMandalCoords(b.name, db, b.state)
+    const ca = getMandalPinLatLngFromSelection(a)
+    const cb = getMandalPinLatLngFromSelection(b)
     if (!ca || !cb) {
       setAutoDistance({ ok: false, error: 'Could not find coordinates for one or both mandals.' })
       return
     }
     distance.clear()
     setAutoPairHint(null)
-    const ll = (lat: number, lon: number) => ({ lat, lng: lon })
-    const km = geoDistanceKm(ll(ca.lat, ca.lon), ll(cb.lat, cb.lon))
+    const ll = (lat: number, lng: number) => ({ lat, lng })
+    const km = geoDistanceKm(ll(ca.lat, ca.lng), ll(cb.lat, cb.lng))
     const segment = {
       positions: [
-        [ca.lat, ca.lon],
-        [cb.lat, cb.lon],
+        [ca.lat, ca.lng],
+        [cb.lat, cb.lng],
       ] as [[number, number], [number, number]],
       km,
     }
@@ -241,26 +248,6 @@ export default function App() {
     }
   }, [districts.apData, districts.tgData])
 
-  const mandalByListKey = useMemo(() => {
-    const map = new Map<string, DistrictFeature>()
-    const fc = mandalMerged
-    if (!fc) return map
-    for (const f of fc.features as DistrictFeature[]) {
-      const p = f.properties
-      if (!p) continue
-      const st = (p._state === 'AP' || p._state === 'TG' ? p._state : null) as 'AP' | 'TG' | null
-      if (!st) continue
-      const dKey = normalizeDistrictForMandals(String(p.district ?? ''))
-      const nKey = normalizeDistrictForMandals(String(p.dtname ?? ''))
-      map.set(`${st}|${dKey}|${nKey}`, f)
-    }
-    return map
-  }, [mandalMerged])
-
-  const listMandalLookupKey = useCallback((state: 'AP' | 'TG', district: string, name: string) => {
-    return `${state}|${normalizeDistrictForMandals(district)}|${normalizeDistrictForMandals(name)}`
-  }, [])
-
   const toMandalFeature = useCallback(
     (m: Mandal): DistrictFeature | null => {
       const parent =
@@ -288,8 +275,9 @@ export default function App() {
 
   const onBrowsePickMandal = useCallback(
     (m: Mandal) => {
-      const fromGeo = mandalByListKey.get(listMandalLookupKey(m.state, m.district, m.name))
-      const f = fromGeo ?? toMandalFeature(m)
+      const rawGeo = resolveMandalFeatureFromList(mandalMerged, m)
+      const synthetic = toMandalFeature(m)
+      const f = rawGeo ? mandalFeatureWithListIdentity(rawGeo, m) : synthetic
       if (!f) {
         showToast({ kind: 'error', text: `No parent district polygon found for ${m.name} (${m.district})` })
         return
@@ -313,12 +301,10 @@ export default function App() {
           })
         }
         setDropdownMandal({ name: m.name, district: m.district, state: m.state })
-        if (!flyToMandalCoordsIfAny(mapRef.current, m.name, m.district, m.state)) {
-          flyToFeatureBounds(
-            mapRef.current,
-            f,
-            fromGeo ? flyOptsMandal : flyOptsDistrict,
-          )
+        if (rawGeo) {
+          flyToFeatureBounds(mapRef.current, f, flyOptsMandal)
+        } else if (!flyToMandalCoordsIfAny(mapRef.current, m.name, m.district, m.state)) {
+          flyToFeatureBounds(mapRef.current, f, flyOptsDistrict)
         }
       }
       if (action === 'removed') {
@@ -327,16 +313,7 @@ export default function App() {
         )
       }
     },
-    [
-      toggleFeature,
-      showToast,
-      toMandalFeature,
-      flyOptsDistrict,
-      flyOptsMandal,
-      mandalByListKey,
-      listMandalLookupKey,
-      districtIndex,
-    ],
+    [toggleFeature, showToast, toMandalFeature, flyOptsDistrict, flyOptsMandal, mandalMerged, districtIndex],
   )
 
   const onToggleSelect = useCallback(
@@ -393,7 +370,10 @@ export default function App() {
           const mName = String(f.properties?.dtname ?? f.properties?.mandal ?? '')
           const mDist = String(f.properties?.district ?? '')
           const mSt = f.properties?._state as 'AP' | 'TG' | undefined
-          if (!mSt || !flyToMandalCoordsIfAny(mapRef.current, mName, mDist, mSt)) {
+          const isDistrictStandIn = f.properties?.note === 'no_polygon_parent_district'
+          if (!isDistrictStandIn) {
+            flyToFeatureBounds(mapRef.current, f, flyOptsMandal)
+          } else if (!mSt || !flyToMandalCoordsIfAny(mapRef.current, mName, mDist, mSt)) {
             flyToFeatureBounds(mapRef.current, f, flyOptsMandal)
           }
         } else {
@@ -455,18 +435,10 @@ export default function App() {
       return
     }
     if (a.layer === 'mandal' && b.layer === 'mandal') {
-      const c1 = getMandalCoords(
-        a.name,
-        String(a.feature.properties?.district ?? ''),
-        a.state,
-      )
-      const c2 = getMandalCoords(
-        b.name,
-        String(b.feature.properties?.district ?? ''),
-        b.state,
-      )
+      const c1 = getMandalPinLatLngFromSelection(a)
+      const c2 = getMandalPinLatLngFromSelection(b)
       if (c1 && c2 && mapRef.current) {
-        mapRef.current.fitBounds(L.latLngBounds(L.latLng(c1.lat, c1.lon), L.latLng(c2.lat, c2.lon)), {
+        mapRef.current.fitBounds(L.latLngBounds(L.latLng(c1.lat, c1.lng), L.latLng(c2.lat, c2.lng)), {
           padding: [80, 80],
         })
       }
