@@ -20,8 +20,8 @@ export function normalizeDistrictForMandals(s: string): string {
 export const DISTRICT_ALIASES: Record<string, string> = {
   // Telangana (tg_districts.geojson)
   'kumuram bheem asifabad': 'Kumuram Bheem',
-  'ranjanna sircilla'
-  'rajanna sircilla': 'Rajanna Sircilla',: 'Rajanna Sircilla',
+  'ranjanna sircilla': 'Rajanna Sircilla',
+  'rajanna sircilla': 'Rajanna Sircilla',
   'warangal urban': 'Hanamkonda',
   'warangal rural': 'Warangal (Rural)',
   // Andhra Pradesh (ap_districts.geojson)
@@ -39,7 +39,6 @@ export const DISTRICT_ALIASES: Record<string, string> = {
   nellore: 'Sri Potti Sriramulu Nellore',
   'alluri sitharama raju': 'Alluri Sitarama Raju',
   'alluri sitarama raju': 'Alluri Sitarama Raju',
-  'alluri sitarama raju': 'Alluri Sitharama Raju',
   'ysr kadapa': 'YSR Kadapa',
   kadapa: 'YSR Kadapa',
   cuddapah: 'YSR Kadapa',
