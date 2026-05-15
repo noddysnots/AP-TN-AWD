@@ -326,6 +326,9 @@ export const MANDAL_COORDS: MandalCoord[] = [
   { name: 'Chevella', district: 'Rangareddy', state: 'TG', lat: 17.31966, lon: 78.11701 },
   { name: 'Farooqnagar', district: 'Rangareddy', state: 'TG', lat: 17.04195, lon: 78.188 },
   { name: 'Hayathnagar', district: 'Rangareddy', state: 'TG', lat: 17.31417, lon: 78.65459 },
+  /** Same geometry as Vikarabad row — mandals.ts lists these under Rangareddy post-reorg. */
+  { name: 'Doma', district: 'Rangareddy', state: 'TG', lat: 17.08268, lon: 77.82712 },
+  { name: 'Kodangal', district: 'Rangareddy', state: 'TG', lat: 17.1019, lon: 77.56746 },
   { name: 'Ibrahimpatnam3', district: 'Rangareddy', state: 'TG', lat: 17.19864, lon: 78.64893 },
   { name: 'Kandukur2', district: 'Rangareddy', state: 'TG', lat: 17.07478, lon: 78.50123 },
   { name: 'Keshampet', district: 'Rangareddy', state: 'TG', lat: 16.98624, lon: 78.32768 },
@@ -1163,6 +1166,24 @@ export const getMandalCoords = (
     normalize(m.district) === normDist
   );
   if (entry) return { lat: entry.lat, lon: entry.lon };
+
+  const nameBase = (n: string) => n.replace(/\d+$/, '');
+
+  // Pass 1b: same district + state, mandal names equal ignoring trailing digits (e.g. Kandukur vs Kandukur2)
+  const flexKey = nameBase(normName);
+  if (flexKey.length > 0) {
+    const flexHits = MANDAL_COORDS.filter(
+      (m) =>
+        m.state === state &&
+        normalize(m.district) === normDist &&
+        nameBase(normalize(m.name)) === flexKey,
+    );
+    if (flexHits.length === 1) return { lat: flexHits[0].lat, lon: flexHits[0].lon };
+    if (flexHits.length > 1) {
+      const exactFlex = flexHits.find((m) => normalize(m.name) === normName);
+      if (exactFlex) return { lat: exactFlex.lat, lon: exactFlex.lon };
+    }
+  }
 
   // Pass 2: name match only (handles district name spelling variants)
   const nameMatches = MANDAL_COORDS.filter(m =>
